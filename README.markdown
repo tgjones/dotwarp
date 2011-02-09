@@ -12,13 +12,12 @@ DotWarp does have some fairly specific requirements / prerequisites:
 
 1. .NET 4.0
 2. Windows Vista / 7 / Server 2008 R2 (WARP is only supported on these platforms)
-3. [SlimDX](http://slimdx.org)
 
 ### Quick start
 
-1. Download the latest release from the [downloads page](http://github.com/formosatek/dotwarp/downloads).
+1. Download the latest release from the [downloads page](http://github.com/roastedamoeba/dotwarp/downloads).
    The zip file contains the necessary DLLs.
-2. Read the [wiki](http://github.com/formosatek/dotwarp/wiki) for information on using DotWarp to render 3D scenes.
+2. Read the [wiki](http://github.com/roastedamoeba/dotwarp/wiki) for information on using DotWarp to render 3D scenes.
 
 ### Why should i use DotWarp
 
@@ -26,20 +25,27 @@ DotWarp does have some fairly specific requirements / prerequisites:
 
 ### How to use DotLiquid
 
-DotWarp uses Meshellator to import meshes from 3D files (currently, Meshellator only imports .obj and .3ds files).
+DotWarp uses Meshellator to import meshes from 3D files (currently, Meshellator only supports .obj and .3ds files).
 Materials are loaded from the mesh files, and default lighting is used.
 
-	WriteableBitmap outputImage = new WriteableBitmap(800, 600); 
-	ImageRenderer imageRenderer = new ImageRenderer(outputImage, 1); 
+	using (WarpSceneRenderer renderer = new WarpSceneRenderer(800, 600))
+	{
+		Scene scene = MeshellatorLoader.ImportFromFile("Models/3ds/85-nissan-fairlady.3ds");
+		Camera camera = new PerspectiveCamera
+		{
+			FarPlaneDistance = 100000,
+			NearPlaneDistance = 1,
+			FieldOfView = MathUtility.PI_OVER_4,
+			LookDirection = new Vector3D(-1, -0.3f, 1),
+			Position = new Point3D(3000, 1500, -1500),
+			UpDirection = Vector3D.Up
+		};
 
-	WarpDevice device = new WarpDevice(); 
-	device.SetRenderTarget(imageRenderer.GetBuffer()); 
-	device.BeginScene();  
+		BitmapSource bitmap = renderer.Render(scene, camera);
 
-	WarpModel model = WarpModel.FromFile(device, "mini.3ds"); 
-	model.Draw(); 
-
-	device.EndScene(); 
-	imageRenderer.Present();  
-
-	// Save or display outputImage. 
+		// Can save bitmap, or do something else with it.
+		PngBitmapEncoder e = new PngBitmapEncoder();
+		e.Frames.Add(BitmapFrame.Create(bitmap));
+		using (Stream stream = File.OpenWrite("output.png"))
+			e.Save(stream);
+	}
