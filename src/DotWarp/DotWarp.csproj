@@ -31,13 +31,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Meshellator">
-      <HintPath>..\..\lib\Meshellator\Meshellator.dll</HintPath>
-    </Reference>
     <Reference Include="Microsoft.Build.Conversion.v4.0" />
-    <Reference Include="Nexus">
-      <HintPath>..\..\lib\Nexus\Nexus.dll</HintPath>
-    </Reference>
     <Reference Include="Nexus.Wpf">
       <HintPath>..\..\lib\Nexus\Nexus.Wpf.dll</HintPath>
     </Reference>
@@ -69,17 +63,30 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ContentManager.cs" />
     <Compile Include="Effects\BasicEffect.cs" />
     <Compile Include="Effects\BasicEffectCode.cs" />
     <Compile Include="Effects\DirectionalLight.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RenderOptions.cs" />
     <Compile Include="Util\ConversionUtility.cs" />
     <Compile Include="Util\DeviceUtility.cs" />
     <Compile Include="VertexPositionNormalTexture.cs" />
+    <Compile Include="WarpMesh.cs" />
     <Compile Include="WarpSceneRenderer.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Effects\BasicEffect.fx" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\meshellator\src\Meshellator\Meshellator.csproj">
+      <Project>{CEBA7681-E968-46F6-8C87-7005FAA98267}</Project>
+      <Name>Meshellator</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\nexus\src\Nexus\Nexus.csproj">
+      <Project>{0E5E31FF-D903-40BD-A787-7DA4E1D30138}</Project>
+      <Name>Nexus</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

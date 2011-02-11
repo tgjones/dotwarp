@@ -1,18 +1,18 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows.Media.Imaging;
 using DotWarp.Effects;
 using DotWarp.Util;
 using Meshellator;
-using Nexus;
 using Nexus.Graphics.Cameras;
 using Nexus.Util;
 using SharpDX;
+using SharpDX.D3DCompiler;
 using SharpDX.Direct3D;
 using SharpDX.Direct3D10;
 using SharpDX.DXGI;
-using Buffer = SharpDX.Direct3D10.Buffer;
 using Device = SharpDX.Direct3D10.Device;
 using Mesh = Meshellator.Mesh;
 
@@ -22,38 +22,57 @@ namespace DotWarp
 	{
 		#region Fields
 
+		private readonly Scene _scene;
 		private readonly int _width;
 		private readonly int _height;
-		private readonly Device _device;
-		private readonly DepthStencilView _depthStencilView;
-		private readonly Texture2DDescription _renderTextureDescription;
-		private readonly Texture2D _renderTexture;
-		private readonly RenderTargetView _renderTargetView;
 		private readonly float _aspectRatio;
-		private readonly BlendState _opaqueBlendState;
-		private readonly BlendState _alphaBlendState;
+		private bool _initialized;
+		private Device _device;
+		private ContentManager _contentManager;
+		private Texture2D _depthStencilTexture;
+		private DepthStencilView _depthStencilView;
+		private Texture2DDescription _renderTextureDescription;
+		private Texture2D _renderTexture;
+		private RenderTargetView _renderTargetView;
+		private BlendState _opaqueBlendState;
+		private BlendState _alphaBlendState;
+		private BasicEffect _effect;
+		private InputLayout _inputLayout;
+		private Texture2D _resolveTexture;
+		private Texture2D _stagingTexture;
+		private List<WarpMesh> _meshes;
+		private RasterizerState _rasterizerState;
+
+		#endregion
+
+		#region Properties
+
+		public RenderOptions Options { get; private set; }
 
 		#endregion
 
 		#region Constructor
 
-		public WarpSceneRenderer(int width, int height)
+		public WarpSceneRenderer(Scene scene, int width, int height)
 		{
+			_scene = scene;
 			_width = width;
 			_height = height;
 			_aspectRatio = width / (float)height;
+		}
 
+		#endregion
+
+		#region Methods
+
+		public void Initialize()
+		{
 			_device = DeviceUtility.CreateDevice();
 
-			var viewport = new Viewport(0, 0, width, height);
-			_device.Rasterizer.SetViewports(viewport);
+			_contentManager = new ContentManager(_device);
 
-			_device.Rasterizer.State = new RasterizerState(_device, new RasterizerStateDescription
-			{
-				CullMode = CullMode.Back,
-				FillMode = FillMode.Solid,
-				IsMultisampleEnabled = true
-			});
+			var viewport = new Viewport(0, 0, _width, _height);
+			_device.Rasterizer.SetViewports(viewport);
 
 			SampleDescription sampleDescription = new SampleDescription(8, 0);
 			Texture2DDescription depthStencilDescription = new Texture2DDescription
@@ -61,22 +80,23 @@ namespace DotWarp
 				Format = Format.D24_UNorm_S8_UInt,
 				SampleDescription = sampleDescription,
 				Usage = ResourceUsage.Default,
-				Width = width,
-				Height = height,
+				Width = _width,
+				Height = _height,
 				BindFlags = BindFlags.DepthStencil,
 				ArraySize = 1,
 				CpuAccessFlags = CpuAccessFlags.None,
 				MipLevels = 1
 			};
-			_depthStencilView = new DepthStencilView(_device, new Texture2D(_device, depthStencilDescription));
+			_depthStencilTexture = new Texture2D(_device, depthStencilDescription);
+			_depthStencilView = new DepthStencilView(_device, _depthStencilTexture);
 
 			_renderTextureDescription = new Texture2DDescription
 			{
 				Format = Format.R8G8B8A8_UNorm,
 				SampleDescription = sampleDescription,
 				Usage = ResourceUsage.Default,
-				Width = width,
-				Height = height,
+				Width = _width,
+				Height = _height,
 				BindFlags = BindFlags.RenderTarget,
 				ArraySize = 1,
 				CpuAccessFlags = CpuAccessFlags.None,
@@ -103,61 +123,92 @@ namespace DotWarp
 			alphaBlendStateDescription.DestinationBlend = BlendOption.InverseSourceAlpha;
 			alphaBlendStateDescription.IsBlendEnabled[0] = true;
 			_alphaBlendState = new BlendState(_device, alphaBlendStateDescription);
-		}
 
-		#endregion
+			Options = new RenderOptions();
 
-		#region Methods
+			_effect = BasicEffect.Create(_device);
 
-		public BitmapSource Render(Scene scene, Camera camera)
-		{
-			// Setup for rendering.
-			_device.ClearRenderTargetView(_renderTargetView, System.Drawing.Color.LightBlue);
-			_device.ClearDepthStencilView(_depthStencilView, DepthStencilClearFlags.Depth, 1, 0);
-			_device.OutputMerger.SetTargets(_depthStencilView, _renderTargetView);
 			_device.InputAssembler.SetPrimitiveTopology(PrimitiveTopology.TriangleList);
 
-			BasicEffect effect = BasicEffect.Create(_device);
-			effect.View = camera.GetViewMatrix();
-			effect.Projection = camera.GetProjectionMatrix(_aspectRatio);
-
-			_device.InputAssembler.SetInputLayout(new InputLayout(_device,
-				effect.CurrentTechnique.GetPassByIndex(0).Description.Signature,
-				VertexPositionNormalTexture.InputElements));
-
-			// Render scene.
-			_device.OutputMerger.BlendState = _opaqueBlendState;
-			foreach (Mesh mesh in scene.Meshes.Where(m => m.Material.Transparency == 1))
-				RenderMesh(mesh, effect);
-			_device.OutputMerger.BlendState = _alphaBlendState;
-			foreach (Mesh mesh in scene.Meshes.Where(m => m.Material.Transparency < 1))
-				RenderMesh(mesh, effect);
-
-			// Extract image from render target.
-			_device.OutputMerger.SetTargets((RenderTargetView)null);
+			ShaderBytecode passSignature = _effect.CurrentTechnique.GetPassByIndex(0).Description.Signature;
+			_inputLayout = new InputLayout(_device,
+				passSignature,
+				VertexPositionNormalTexture.InputElements);
+			passSignature.Dispose();
+			_device.InputAssembler.SetInputLayout(_inputLayout);
 
 			Texture2DDescription resolveTextureDescription = _renderTextureDescription;
 			resolveTextureDescription.SampleDescription = new SampleDescription(1, 0);
 			resolveTextureDescription.Usage = ResourceUsage.Default;
 			resolveTextureDescription.BindFlags = BindFlags.None;
 			resolveTextureDescription.CpuAccessFlags = CpuAccessFlags.None;
-			Texture2D resolveTexture = new Texture2D(_device, resolveTextureDescription);
-
-			_device.ResolveSubresource(_renderTexture, 0, resolveTexture, 0, Format.R8G8B8A8_UNorm);
+			_resolveTexture = new Texture2D(_device, resolveTextureDescription);
 
 			Texture2DDescription stagingTextureDescription = _renderTextureDescription;
 			stagingTextureDescription.SampleDescription = new SampleDescription(1, 0);
 			stagingTextureDescription.Usage = ResourceUsage.Staging;
 			stagingTextureDescription.BindFlags = BindFlags.None;
 			stagingTextureDescription.CpuAccessFlags = CpuAccessFlags.Read;
-			Texture2D stagingTexture = new Texture2D(_device, stagingTextureDescription);
+			_stagingTexture = new Texture2D(_device, stagingTextureDescription);
 
-			_device.CopyResource(resolveTexture, stagingTexture);
+			_meshes = new List<WarpMesh>();
+			foreach (Mesh mesh in _scene.Meshes)
+			{
+				if (!mesh.Positions.Any())
+					continue;
+
+				WarpMesh warpMesh = new WarpMesh(_device, mesh);
+				_meshes.Add(warpMesh);
+
+				warpMesh.Initialize(_contentManager);
+			}
+
+			_rasterizerState = new RasterizerState(_device, new RasterizerStateDescription
+			{
+				CullMode = CullMode.Back,
+				FillMode = FillMode.Solid,
+				IsMultisampleEnabled = true,
+				IsFrontCounterClockwise = Options.TriangleWindingOrderReversed
+			});
+
+			_initialized = true;
+		}
+
+		public BitmapSource Render(Camera camera)
+		{
+			if (!_initialized)
+				throw new InvalidOperationException("Initialize must be called before Render");
+
+			// Setup for rendering.
+			_device.Rasterizer.State = _rasterizerState;
+			_device.ClearRenderTargetView(_renderTargetView, ConversionUtility.ToDrawingColor(Options.BackgroundColor));
+			_device.ClearDepthStencilView(_depthStencilView, DepthStencilClearFlags.Depth, 1, 0);
+			_device.OutputMerger.SetTargets(_depthStencilView, _renderTargetView);
+
+			_effect.LightingEnabled = Options.LightingEnabled;
+			_effect.View = camera.GetViewMatrix();
+			_effect.Projection = camera.GetProjectionMatrix(_aspectRatio);
+
+			// Render scene.
+			_device.OutputMerger.BlendState = _opaqueBlendState;
+			foreach (WarpMesh mesh in _meshes.Where(m => m.IsOpaque))
+				mesh.Draw(_effect);
+			_device.OutputMerger.BlendState = _alphaBlendState;
+			foreach (WarpMesh mesh in _meshes.Where(m => !m.IsOpaque))
+				mesh.Draw(_effect);
+
+			// Extract image from render target.
+			_device.OutputMerger.SetTargets((RenderTargetView)null);
+
+			_device.ResolveSubresource(_renderTexture, 0, _resolveTexture, 0, Format.R8G8B8A8_UNorm);
+
+			_device.CopyResource(_resolveTexture, _stagingTexture);
 
 			WriteableBitmapWrapper bitmapWrapper = new WriteableBitmapWrapper(_width, _height);
-			DataRectangle dr = stagingTexture.Map(0, MapMode.Read, SharpDX.Direct3D10.MapFlags.None);
+			DataRectangle dr = _stagingTexture.Map(0, MapMode.Read, SharpDX.Direct3D10.MapFlags.None);
 			PopulateBitmap(dr, bitmapWrapper);
-			stagingTexture.Unmap(0);
+			_stagingTexture.Unmap(0);
+			dr.Data.Dispose();
 
 			bitmapWrapper.Invalidate();
 			return bitmapWrapper.InnerBitmap;
@@ -187,64 +238,37 @@ namespace DotWarp
 			public byte A;
 		}
 
-		private void RenderMesh(Mesh mesh, BasicEffect effect)
-		{
-			SetVertexBuffer(mesh);
-			SetIndexBuffer(mesh);
-
-			effect.World = mesh.Transform.Value;
-			effect.DiffuseColor = mesh.Material.DiffuseColor;
-			effect.SpecularColor = mesh.Material.SpecularColor;
-			effect.SpecularPower = mesh.Material.Shininess;
-			effect.Alpha = mesh.Material.Transparency;
-
-			effect.Begin();
-			effect.CurrentTechnique.GetPassByIndex(0).Apply();
-
-			_device.DrawIndexed(mesh.Indices.Count, 0, 0);
-		}
-
-		private void SetVertexBuffer(Mesh mesh)
-		{
-			DataStream vertexStream = new DataStream(
-				mesh.Positions.Count*VertexPositionNormalTexture.SizeInBytes,
-				false, true);
-			for (int i = 0; i < mesh.Positions.Count; i++)
-			{
-				vertexStream.Write(mesh.Positions[i]);
-				vertexStream.Write(mesh.Normals[i]);
-				if (mesh.TextureCoordinates.Count - 1 >= i)
-					vertexStream.Write(new Point2D(mesh.TextureCoordinates[i].X, mesh.TextureCoordinates[i].Y));
-				else
-					vertexStream.Write(Point2D.Zero);
-			}
-			vertexStream.Position = 0;
-			Buffer vertexBuffer = new Buffer(_device, vertexStream, (int) vertexStream.Length,
-				ResourceUsage.Default, BindFlags.VertexBuffer, CpuAccessFlags.None,
-				ResourceOptionFlags.None);
-
-			_device.InputAssembler.SetVertexBuffers(0,
-				new VertexBufferBinding(vertexBuffer, VertexPositionNormalTexture.SizeInBytes, 0));
-		}
-
-		private void SetIndexBuffer(Mesh mesh)
-		{
-			DataStream indexStream = new DataStream(mesh.Indices.Count * sizeof(short), false, true);
-			for (int i = 0; i < mesh.Indices.Count; i++)
-				indexStream.Write((short)mesh.Indices[i]);
-			indexStream.Position = 0;
-			Buffer indexBuffer = new Buffer(_device, indexStream, (int) indexStream.Length,
-				ResourceUsage.Default, BindFlags.IndexBuffer, CpuAccessFlags.None,
-				ResourceOptionFlags.None);
-
-			_device.InputAssembler.SetIndexBuffer(indexBuffer, Format.R16_UInt, 0);
-		}
-
 		public void Dispose()
 		{
-			_renderTexture.Dispose();
-			_renderTargetView.Dispose();
-			_device.Dispose();
+			if (_rasterizerState != null)
+				_rasterizerState.Dispose();
+			if (_meshes != null)
+				foreach (WarpMesh mesh in _meshes)
+					mesh.Dispose();
+			if (_stagingTexture != null)
+				_stagingTexture.Dispose();
+			if (_resolveTexture != null)
+				_resolveTexture.Dispose();
+			if (_inputLayout != null)
+				_inputLayout.Dispose();
+			if (_effect != null)
+				_effect.Dispose();
+			if (_alphaBlendState != null)
+				_alphaBlendState.Dispose();
+			if (_opaqueBlendState != null)
+				_opaqueBlendState.Dispose();
+			if (_renderTargetView != null)
+				_renderTargetView.Dispose();
+			if (_renderTexture != null)
+				_renderTexture.Dispose();
+			if (_depthStencilView != null)
+				_depthStencilView.Dispose();
+			if (_depthStencilTexture != null)
+				_depthStencilTexture.Dispose();
+			if (_contentManager != null)
+				_contentManager.Dispose();
+			if (_device != null)
+				_device.Dispose();
 		}
 
 		#endregion

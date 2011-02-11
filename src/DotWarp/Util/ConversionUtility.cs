@@ -37,5 +37,10 @@ namespace DotWarp.Util
 		{
 			return new Vector3(c.R, c.G, c.B);
 		}
+
+		public static System.Drawing.Color ToDrawingColor(Color c)
+		{
+			return System.Drawing.Color.FromArgb(c.A, c.R, c.G, c.B);
+		}
 	}
 }
