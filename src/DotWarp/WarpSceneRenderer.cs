@@ -41,7 +41,6 @@ namespace DotWarp
 		private Texture2D _resolveTexture;
 		private Texture2D _stagingTexture;
 		private List<WarpMesh> _meshes;
-		private RasterizerState _rasterizerState;
 
 		#endregion
 
@@ -163,14 +162,6 @@ namespace DotWarp
 				warpMesh.Initialize(_contentManager);
 			}
 
-			_rasterizerState = new RasterizerState(_device, new RasterizerStateDescription
-			{
-				CullMode = CullMode.Back,
-				FillMode = FillMode.Solid,
-				IsMultisampleEnabled = true,
-				IsFrontCounterClockwise = Options.TriangleWindingOrderReversed
-			});
-
 			_initialized = true;
 		}
 
@@ -180,7 +171,13 @@ namespace DotWarp
 				throw new InvalidOperationException("Initialize must be called before Render");
 
 			// Setup for rendering.
-			_device.Rasterizer.State = _rasterizerState;
+			_device.Rasterizer.State = new RasterizerState(_device, new RasterizerStateDescription
+			{
+				CullMode = CullMode.Back,
+				FillMode = FillMode.Solid,
+				IsMultisampleEnabled = true,
+				IsFrontCounterClockwise = Options.TriangleWindingOrderReversed
+			});
 			_device.ClearRenderTargetView(_renderTargetView, ConversionUtility.ToDrawingColor(Options.BackgroundColor));
 			_device.ClearDepthStencilView(_depthStencilView, DepthStencilClearFlags.Depth, 1, 0);
 			_device.OutputMerger.SetTargets(_depthStencilView, _renderTargetView);
@@ -199,6 +196,7 @@ namespace DotWarp
 
 			// Extract image from render target.
 			_device.OutputMerger.SetTargets((RenderTargetView)null);
+			_device.Rasterizer.State.Dispose();
 
 			_device.ResolveSubresource(_renderTexture, 0, _resolveTexture, 0, Format.R8G8B8A8_UNorm);
 
@@ -240,8 +238,6 @@ namespace DotWarp
 
 		public void Dispose()
 		{
-			if (_rasterizerState != null)
-				_rasterizerState.Dispose();
 			if (_meshes != null)
 				foreach (WarpMesh mesh in _meshes)
 					mesh.Dispose();

@@ -31,9 +31,15 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Meshellator, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Meshellator.1.0.0.0\lib\NET40\Meshellator.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.Build.Conversion.v4.0" />
-    <Reference Include="Nexus.Wpf">
-      <HintPath>..\..\lib\Nexus\Nexus.Wpf.dll</HintPath>
+    <Reference Include="Nexus, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Nexus.1.0.0.0\lib\NET40\Nexus.dll</HintPath>
+    </Reference>
+    <Reference Include="Nexus.Wpf, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Nexus.Wpf.1.0.0.0\lib\NET40\Nexus.Wpf.dll</HintPath>
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="SharpDX">
@@ -79,14 +85,7 @@
     <EmbeddedResource Include="Effects\BasicEffect.fx" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\meshellator\src\Meshellator\Meshellator.csproj">
-      <Project>{CEBA7681-E968-46F6-8C87-7005FAA98267}</Project>
-      <Name>Meshellator</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\nexus\src\Nexus\Nexus.csproj">
-      <Project>{0E5E31FF-D903-40BD-A787-7DA4E1D30138}</Project>
-      <Name>Nexus</Name>
-    </ProjectReference>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

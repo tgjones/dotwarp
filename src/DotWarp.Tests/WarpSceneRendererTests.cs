@@ -1,5 +1,3 @@
-using System.IO;
-using System.Windows.Media.Imaging;
 using Meshellator;
 using Nexus;
 using Nexus.Graphics.Cameras;
@@ -14,9 +12,11 @@ namespace DotWarp.Tests
 		public void CanRenderModel()
 		{
 			// Arrange.
-			using (WarpSceneRenderer renderer = new WarpSceneRenderer(800, 600))
+			Scene scene = MeshellatorLoader.ImportFromFile("Models/3ds/85-nissan-fairlady.3ds");
+			using (WarpSceneRenderer renderer = new WarpSceneRenderer(scene, 800, 600))
 			{
-				Scene scene = MeshellatorLoader.ImportFromFile("Models/3ds/85-nissan-fairlady.3ds");
+				renderer.Initialize();
+
 				Camera camera = new PerspectiveCamera
 				{
 					FarPlaneDistance = 100000,
@@ -28,16 +28,15 @@ namespace DotWarp.Tests
 				};
 
 				// Act.
-				var bitmap = renderer.Render(scene, camera);
+				var bitmap = renderer.Render(camera);
 
 				// Assert.
 				Assert.IsNotNull(bitmap);
 
-				// TODO: Temp.
-				PngBitmapEncoder e = new PngBitmapEncoder();
-				e.Frames.Add(BitmapFrame.Create(bitmap));
-				using (Stream stream = File.OpenWrite("output.png"))
-					e.Save(stream);
+				//PngBitmapEncoder e = new PngBitmapEncoder();
+				//e.Frames.Add(BitmapFrame.Create(bitmap));
+				//using (Stream stream = File.OpenWrite("output.png"))
+				//    e.Save(stream);
 			}
 		}
 	}

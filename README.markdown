@@ -8,7 +8,7 @@ For more information about WARP, see <http://msdn.microsoft.com/en-us/library/dd
 
 ### System requirements
 
-DotWarp does have some fairly specific requirements / prerequisites:
+DotWarp has some fairly specific requirements / prerequisites:
 
 1. .NET 4.0
 2. Windows Vista / 7 / Server 2008 R2 (WARP is only supported on these platforms)
@@ -19,18 +19,20 @@ DotWarp does have some fairly specific requirements / prerequisites:
    The zip file contains the necessary DLLs.
 2. Read the [wiki](http://github.com/roastedamoeba/dotwarp/wiki) for information on using DotWarp to render 3D scenes.
 
-### Why should i use DotWarp
+### Why should I use DotWarp?
 
 * You want to render 3D images in a server-side environment (such as ASP.NET).
 
-### How to use DotLiquid
+### How to use DotWarp
 
 DotWarp uses Meshellator to import meshes from 3D files (currently, Meshellator only supports .obj and .3ds files).
 Materials are loaded from the mesh files, and default lighting is used.
 
-	using (WarpSceneRenderer renderer = new WarpSceneRenderer(800, 600))
+	Scene scene = MeshellatorLoader.ImportFromFile("Models/3ds/85-nissan-fairlady.3ds");
+	using (WarpSceneRenderer renderer = new WarpSceneRenderer(scene, 800, 600))
 	{
-		Scene scene = MeshellatorLoader.ImportFromFile("Models/3ds/85-nissan-fairlady.3ds");
+		renderer.Initialize();
+
 		Camera camera = new PerspectiveCamera
 		{
 			FarPlaneDistance = 100000,

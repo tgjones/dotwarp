@@ -32,10 +32,11 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Meshellator, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\lib\Meshellator\Meshellator.dll</HintPath>
+      <HintPath>..\packages\Meshellator.1.0.0.0\lib\NET40\Meshellator.dll</HintPath>
     </Reference>
-    <Reference Include="Nexus, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL" />
+    <Reference Include="Nexus, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Nexus.1.0.0.0\lib\NET40\Nexus.dll</HintPath>
+    </Reference>
     <Reference Include="nunit.framework">
       <HintPath>..\..\lib\NUnit\nunit.framework.dll</HintPath>
     </Reference>
@@ -75,6 +76,9 @@
     <Content Include="Models\3ds\85-nissan-fairlady.3DS">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

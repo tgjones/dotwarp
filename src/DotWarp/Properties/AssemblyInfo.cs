@@ -7,10 +7,10 @@ using System.Runtime.InteropServices;
 // associated with an assembly.
 [assembly: AssemblyTitle("DotWarp")]
 [assembly: AssemblyDescription("")]
-[assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyConfiguration("Retail")]
+[assembly: AssemblyCompany("Tim Jones")]
 [assembly: AssemblyProduct("DotWarp")]
-[assembly: AssemblyCopyright("Copyright ©  2010")]
+[assembly: AssemblyCopyright("Copyright ©2011 Tim Jones")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
