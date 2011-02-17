@@ -12,6 +12,7 @@ DotWarp has some fairly specific requirements / prerequisites:
 
 1. .NET 4.0
 2. Windows Vista / 7 / Server 2008 R2 (WARP is only supported on these platforms)
+3. Latest [DirectX End-User Runtime](http://www.microsoft.com/downloads/en/details.aspx?FamilyID=2DA43D38-DB71-4C1B-BC6A-9B6652CD92A3)
 
 ### Quick start
 
@@ -43,7 +44,7 @@ Materials are loaded from the mesh files, and default lighting is used.
 			UpDirection = Vector3D.Up
 		};
 
-		BitmapSource bitmap = renderer.Render(scene, camera);
+		BitmapSource bitmap = renderer.Render(camera);
 
 		// Can save bitmap, or do something else with it.
 		PngBitmapEncoder e = new PngBitmapEncoder();
