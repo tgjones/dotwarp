@@ -2,18 +2,20 @@
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
     <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{2D2AFB99-DC22-4DAA-998E-AB97727070A1}</ProjectGuid>
-    <OutputType>Library</OutputType>
+    <ProjectGuid>{1BEE510A-C588-495B-8874-25EBF50E41C8}</ProjectGuid>
+    <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>DotWarp.Tests</RootNamespace>
-    <AssemblyName>DotWarp.Tests</AssemblyName>
+    <RootNamespace>DotWarp.CommandLine</RootNamespace>
+    <AssemblyName>DotWarp.CommandLine</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkProfile>Client</TargetFrameworkProfile>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <PlatformTarget>x86</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -22,7 +24,8 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+    <PlatformTarget>x86</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
@@ -31,22 +34,13 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Meshellator, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="Meshellator">
       <HintPath>..\packages\Meshellator.1.0.0.0\lib\NET40\Meshellator.dll</HintPath>
     </Reference>
-    <Reference Include="Nexus, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="Nexus">
       <HintPath>..\packages\Nexus.1.0.0.0\lib\NET40\Nexus.dll</HintPath>
     </Reference>
-    <Reference Include="nunit.framework">
-      <HintPath>..\..\lib\NUnit\nunit.framework.dll</HintPath>
-    </Reference>
     <Reference Include="PresentationCore" />
-    <Reference Include="SharpDX">
-      <HintPath>..\..\lib\SharpDX\SharpDX.dll</HintPath>
-    </Reference>
-    <Reference Include="SharpDX.Direct3D10">
-      <HintPath>..\..\lib\SharpDX\SharpDX.Direct3D10.dll</HintPath>
-    </Reference>
     <Reference Include="SharpDX.Error">
       <HintPath>..\..\lib\SharpDX\SharpDX.Error.dll</HintPath>
     </Reference>
@@ -61,28 +55,14 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Effects\BasicEffectCodeTests.cs" />
-    <Compile Include="Effects\BasicEffectTests.cs" />
+    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="WarpSceneRendererTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\DotWarp\DotWarp.csproj">
       <Project>{666C7F74-F489-4AD7-BC16-77C71EA5E4B0}</Project>
       <Name>DotWarp</Name>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="Models\3ds\85-nissan-fairlady.3DS">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Models\Obj\engine_diff_tex_small.tga" />
-    <Content Include="Models\Obj\turret_alt_diff_tex_small.tga" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Models\Obj\Tank.mtl" />
-    <None Include="Models\Obj\Tank.obj" />
-    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

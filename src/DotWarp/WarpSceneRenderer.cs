@@ -13,7 +13,7 @@ using SharpDX.D3DCompiler;
 using SharpDX.Direct3D;
 using SharpDX.Direct3D10;
 using SharpDX.DXGI;
-using Device = SharpDX.Direct3D10.Device;
+using Device1 = SharpDX.Direct3D10.Device;
 using Mesh = Meshellator.Mesh;
 
 namespace DotWarp
@@ -27,7 +27,7 @@ namespace DotWarp
 		private readonly int _height;
 		private readonly float _aspectRatio;
 		private bool _initialized;
-		private Device _device;
+		private Device1 _device;
 		private ContentManager _contentManager;
 		private Texture2D _depthStencilTexture;
 		private DepthStencilView _depthStencilView;
@@ -171,13 +171,14 @@ namespace DotWarp
 				throw new InvalidOperationException("Initialize must be called before Render");
 
 			// Setup for rendering.
-			_device.Rasterizer.State = new RasterizerState(_device, new RasterizerStateDescription
+			RasterizerState rasterizerState = new RasterizerState(_device, new RasterizerStateDescription
 			{
 				CullMode = CullMode.Back,
 				FillMode = FillMode.Solid,
 				IsMultisampleEnabled = true,
 				IsFrontCounterClockwise = Options.TriangleWindingOrderReversed
 			});
+			_device.Rasterizer.State = rasterizerState;
 			_device.ClearRenderTargetView(_renderTargetView, ConversionUtility.ToDrawingColor(Options.BackgroundColor));
 			_device.ClearDepthStencilView(_depthStencilView, DepthStencilClearFlags.Depth, 1, 0);
 			_device.OutputMerger.SetTargets(_depthStencilView, _renderTargetView);
@@ -193,10 +194,12 @@ namespace DotWarp
 			_device.OutputMerger.BlendState = _alphaBlendState;
 			foreach (WarpMesh mesh in _meshes.Where(m => !m.IsOpaque))
 				mesh.Draw(_effect);
+			_device.OutputMerger.BlendState = null;
 
 			// Extract image from render target.
 			_device.OutputMerger.SetTargets((RenderTargetView)null);
-			_device.Rasterizer.State.Dispose();
+			_device.Rasterizer.State = null;
+			rasterizerState.Dispose();
 
 			_device.ResolveSubresource(_renderTexture, 0, _resolveTexture, 0, Format.R8G8B8A8_UNorm);
 
@@ -238,6 +241,7 @@ namespace DotWarp
 
 		public void Dispose()
 		{
+			_device.InputAssembler.SetInputLayout(null);
 			if (_meshes != null)
 				foreach (WarpMesh mesh in _meshes)
 					mesh.Dispose();

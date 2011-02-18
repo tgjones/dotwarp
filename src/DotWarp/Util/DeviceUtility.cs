@@ -7,7 +7,7 @@ namespace DotWarp.Util
 	{
 		private static bool _noHardware;
 
-		public static Device CreateDevice()
+		public static Device1 CreateDevice()
 		{
 			// If we have previously found that there's no compatible hardware device,
 			// go straight to creating a WARP device.

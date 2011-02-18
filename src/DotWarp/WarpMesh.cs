@@ -104,6 +104,9 @@ namespace DotWarp
 			effect.CurrentTechnique.GetPassByIndex(0).Apply();
 
 			_device.DrawIndexed(_sourceMesh.Indices.Count, 0, 0);
+
+			_device.InputAssembler.SetIndexBuffer(null, Format.R16_UInt, 0);
+			_device.InputAssembler.SetVertexBuffers(0, new VertexBufferBinding());
 		}
 
 		public void Dispose()
