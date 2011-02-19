@@ -1,5 +1,6 @@
 using SharpDX;
-using SharpDX.Direct3D10;
+using SharpDX.Direct3D;
+using SharpDX.Direct3D11;
 
 namespace DotWarp.Util
 {
@@ -7,7 +8,7 @@ namespace DotWarp.Util
 	{
 		private static bool _noHardware;
 
-		public static Device1 CreateDevice()
+		public static Device CreateDevice()
 		{
 			// If we have previously found that there's no compatible hardware device,
 			// go straight to creating a WARP device.
@@ -27,9 +28,9 @@ namespace DotWarp.Util
 			}
 		}
 
-		private static Device1 CreateDevice(DriverType driverType)
+		private static Device CreateDevice(DriverType driverType)
 		{
-			return new Device1(driverType, DeviceCreationFlags.None, FeatureLevel.Level_10_1);
+			return new Device(driverType, DeviceCreationFlags.None, FeatureLevel.Level_10_1);
 		}
 	}
 }

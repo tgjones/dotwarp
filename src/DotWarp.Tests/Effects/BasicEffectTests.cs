@@ -1,7 +1,7 @@
 using DotWarp.Effects;
 using DotWarp.Util;
 using NUnit.Framework;
-using SharpDX.Direct3D10;
+using SharpDX.Direct3D11;
 
 namespace DotWarp.Tests.Effects
 {
@@ -15,7 +15,7 @@ namespace DotWarp.Tests.Effects
 			Device device = DeviceUtility.CreateDevice();
 
 			// Act.
-			BasicEffect basicEffect = BasicEffect.Create(device);
+			BasicEffect basicEffect = new BasicEffect(device, BasicEffectCode.GetCode());
 
 			// Assert.
 			Assert.IsNotNull(basicEffect);

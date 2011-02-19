@@ -2,16 +2,17 @@ using System;
 using DotWarp.Effects;
 using Nexus;
 using SharpDX;
-using SharpDX.Direct3D10;
+using SharpDX.Direct3D11;
 using SharpDX.DXGI;
-using Buffer = SharpDX.Direct3D10.Buffer;
-using Device = SharpDX.Direct3D10.Device;
+using Buffer = SharpDX.Direct3D11.Buffer;
+using Device = SharpDX.Direct3D11.Device;
 
 namespace DotWarp
 {
 	internal class WarpMesh : IDisposable
 	{
 		private readonly Device _device;
+		private readonly DeviceContext _deviceContext;
 		private readonly Meshellator.Mesh _sourceMesh;
 		private bool _initialized;
 		private Buffer _vertexBuffer;
@@ -26,6 +27,7 @@ namespace DotWarp
 		public WarpMesh(Device device, Meshellator.Mesh sourceMesh)
 		{
 			_device = device;
+			_deviceContext = device.ImmediateContext;
 			_sourceMesh = sourceMesh;
 		}
 
@@ -57,7 +59,7 @@ namespace DotWarp
 			vertexStream.Position = 0;
 			_vertexBuffer = new Buffer(_device, vertexStream, (int)vertexStream.Length,
 				ResourceUsage.Default, BindFlags.VertexBuffer, CpuAccessFlags.None,
-				ResourceOptionFlags.None);
+				ResourceOptionFlags.None, VertexPositionNormalTexture.SizeInBytes);
 			vertexStream.Dispose();
 		}
 
@@ -69,7 +71,7 @@ namespace DotWarp
 			indexStream.Position = 0;
 			_indexBuffer = new Buffer(_device, indexStream, (int)indexStream.Length,
 				ResourceUsage.Default, BindFlags.IndexBuffer, CpuAccessFlags.None,
-				ResourceOptionFlags.None);
+				ResourceOptionFlags.None, sizeof(short));
 			indexStream.Dispose();
 		}
 
@@ -78,9 +80,9 @@ namespace DotWarp
 			if (!_initialized)
 				throw new InvalidOperationException("Initialize must be called before Draw");
 
-			_device.InputAssembler.SetVertexBuffers(0,
+			_deviceContext.InputAssembler.SetVertexBuffers(0,
 				new VertexBufferBinding(_vertexBuffer, VertexPositionNormalTexture.SizeInBytes, 0));
-			_device.InputAssembler.SetIndexBuffer(_indexBuffer, Format.R16_UInt, 0);
+			_deviceContext.InputAssembler.SetIndexBuffer(_indexBuffer, Format.R16_UInt, 0);
 
 			effect.World = _sourceMesh.Transform.Value;
 			effect.DiffuseColor = _sourceMesh.Material.DiffuseColor;
@@ -101,12 +103,12 @@ namespace DotWarp
 			effect.Alpha = _sourceMesh.Material.Transparency;
 
 			effect.Begin();
-			effect.CurrentTechnique.GetPassByIndex(0).Apply();
+			effect.Pass.Apply();
 
-			_device.DrawIndexed(_sourceMesh.Indices.Count, 0, 0);
+			_deviceContext.DrawIndexed(_sourceMesh.Indices.Count, 0, 0);
 
-			_device.InputAssembler.SetIndexBuffer(null, Format.R16_UInt, 0);
-			_device.InputAssembler.SetVertexBuffers(0, new VertexBufferBinding());
+			_deviceContext.InputAssembler.SetIndexBuffer(null, Format.R16_UInt, 0);
+			_deviceContext.InputAssembler.SetVertexBuffers(0, new VertexBufferBinding());
 		}
 
 		public void Dispose()

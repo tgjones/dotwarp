@@ -11,9 +11,9 @@ using Nexus.Util;
 using SharpDX;
 using SharpDX.D3DCompiler;
 using SharpDX.Direct3D;
-using SharpDX.Direct3D10;
+using SharpDX.Direct3D11;
 using SharpDX.DXGI;
-using Device1 = SharpDX.Direct3D10.Device;
+using Device = SharpDX.Direct3D11.Device;
 using Mesh = Meshellator.Mesh;
 
 namespace DotWarp
@@ -27,7 +27,8 @@ namespace DotWarp
 		private readonly int _height;
 		private readonly float _aspectRatio;
 		private bool _initialized;
-		private Device1 _device;
+		private Device _device;
+		private DeviceContext _deviceContext;
 		private ContentManager _contentManager;
 		private Texture2D _depthStencilTexture;
 		private DepthStencilView _depthStencilView;
@@ -67,11 +68,12 @@ namespace DotWarp
 		public void Initialize()
 		{
 			_device = DeviceUtility.CreateDevice();
+			_deviceContext = _device.ImmediateContext;
 
 			_contentManager = new ContentManager(_device);
 
 			var viewport = new Viewport(0, 0, _width, _height);
-			_device.Rasterizer.SetViewports(viewport);
+			_deviceContext.Rasterizer.SetViewports(viewport);
 
 			SampleDescription sampleDescription = new SampleDescription(8, 0);
 			Texture2DDescription depthStencilDescription = new Texture2DDescription
@@ -104,7 +106,7 @@ namespace DotWarp
 			_renderTexture = new Texture2D(_device, _renderTextureDescription);
 			_renderTargetView = new RenderTargetView(_device, _renderTexture);
 
-			BlendStateDescription opaqueBlendStateDescription = new BlendStateDescription
+			RenderTargetBlendDescription opaqueRenderTargetBlendDescription = new RenderTargetBlendDescription
 			{
 				SourceBlend = BlendOption.One,
 				DestinationBlend = BlendOption.Zero,
@@ -112,29 +114,32 @@ namespace DotWarp
 				SourceAlphaBlend = BlendOption.One,
 				DestinationAlphaBlend = BlendOption.Zero,
 				AlphaBlendOperation = BlendOperation.Add,
-				IsAlphaToCoverageEnabled = false
+				RenderTargetWriteMask = ColorWriteMaskFlags.All
 			};
-			opaqueBlendStateDescription.RenderTargetWriteMask[0] = ColorWriteMaskFlags.All;
+			BlendStateDescription opaqueBlendStateDescription = new BlendStateDescription();
+			opaqueBlendStateDescription.RenderTarget[0] = opaqueRenderTargetBlendDescription;
 			_opaqueBlendState = new BlendState(_device, opaqueBlendStateDescription);
 
-			BlendStateDescription alphaBlendStateDescription = opaqueBlendStateDescription;
-			alphaBlendStateDescription.SourceBlend = BlendOption.One;
-			alphaBlendStateDescription.DestinationBlend = BlendOption.InverseSourceAlpha;
-			alphaBlendStateDescription.IsBlendEnabled[0] = true;
+			RenderTargetBlendDescription alphaRenderTargetBlendDescription = opaqueRenderTargetBlendDescription;
+			alphaRenderTargetBlendDescription.SourceBlend = BlendOption.One;
+			alphaRenderTargetBlendDescription.DestinationBlend = BlendOption.InverseSourceAlpha;
+			alphaRenderTargetBlendDescription.IsBlendEnabled = true;
+			BlendStateDescription alphaBlendStateDescription = new BlendStateDescription();
+			alphaBlendStateDescription.RenderTarget[0] = alphaRenderTargetBlendDescription;
 			_alphaBlendState = new BlendState(_device, alphaBlendStateDescription);
 
 			Options = new RenderOptions();
 
-			_effect = BasicEffect.Create(_device);
+			_effect = new BasicEffect(_device, BasicEffectCode.GetCode());
 
-			_device.InputAssembler.SetPrimitiveTopology(PrimitiveTopology.TriangleList);
+			_deviceContext.InputAssembler.SetPrimitiveTopology(PrimitiveTopology.TriangleList);
 
-			ShaderBytecode passSignature = _effect.CurrentTechnique.GetPassByIndex(0).Description.Signature;
+			ShaderBytecode passSignature = _effect.Pass.Signature;
 			_inputLayout = new InputLayout(_device,
 				passSignature,
 				VertexPositionNormalTexture.InputElements);
 			passSignature.Dispose();
-			_device.InputAssembler.SetInputLayout(_inputLayout);
+			_deviceContext.InputAssembler.SetInputLayout(_inputLayout);
 
 			Texture2DDescription resolveTextureDescription = _renderTextureDescription;
 			resolveTextureDescription.SampleDescription = new SampleDescription(1, 0);
@@ -178,52 +183,54 @@ namespace DotWarp
 				IsMultisampleEnabled = true,
 				IsFrontCounterClockwise = Options.TriangleWindingOrderReversed
 			});
-			_device.Rasterizer.State = rasterizerState;
-			_device.ClearRenderTargetView(_renderTargetView, ConversionUtility.ToDrawingColor(Options.BackgroundColor));
-			_device.ClearDepthStencilView(_depthStencilView, DepthStencilClearFlags.Depth, 1, 0);
-			_device.OutputMerger.SetTargets(_depthStencilView, _renderTargetView);
+			_deviceContext.Rasterizer.State = rasterizerState;
+			_deviceContext.ClearRenderTargetView(_renderTargetView, ConversionUtility.ToDrawingColor(Options.BackgroundColor));
+			_deviceContext.ClearDepthStencilView(_depthStencilView, DepthStencilClearFlags.Depth, 1, 0);
+			_deviceContext.OutputMerger.SetTargets(_depthStencilView, _renderTargetView);
 
 			_effect.LightingEnabled = Options.LightingEnabled;
 			_effect.View = camera.GetViewMatrix();
 			_effect.Projection = camera.GetProjectionMatrix(_aspectRatio);
 
 			// Render scene.
-			_device.OutputMerger.BlendState = _opaqueBlendState;
+			_deviceContext.OutputMerger.BlendState = _opaqueBlendState;
 			foreach (WarpMesh mesh in _meshes.Where(m => m.IsOpaque))
 				mesh.Draw(_effect);
-			_device.OutputMerger.BlendState = _alphaBlendState;
+			_deviceContext.OutputMerger.BlendState = _alphaBlendState;
 			foreach (WarpMesh mesh in _meshes.Where(m => !m.IsOpaque))
 				mesh.Draw(_effect);
-			_device.OutputMerger.BlendState = null;
+			_deviceContext.OutputMerger.BlendState = null;
 
 			// Extract image from render target.
-			_device.OutputMerger.SetTargets((RenderTargetView)null);
-			_device.Rasterizer.State = null;
+			_deviceContext.OutputMerger.SetTargets((RenderTargetView)null);
+			_deviceContext.Rasterizer.State = null;
 			rasterizerState.Dispose();
 
-			_device.ResolveSubresource(_renderTexture, 0, _resolveTexture, 0, Format.R8G8B8A8_UNorm);
+			_deviceContext.ResolveSubresource(_renderTexture, 0, _resolveTexture, 0, Format.R8G8B8A8_UNorm);
 
-			_device.CopyResource(_resolveTexture, _stagingTexture);
+			_deviceContext.CopyResource(_resolveTexture, _stagingTexture);
 
 			WriteableBitmapWrapper bitmapWrapper = new WriteableBitmapWrapper(_width, _height);
-			DataRectangle dr = _stagingTexture.Map(0, MapMode.Read, SharpDX.Direct3D10.MapFlags.None);
-			PopulateBitmap(dr, bitmapWrapper);
-			_stagingTexture.Unmap(0);
-			dr.Data.Dispose();
+			DataBox db = _deviceContext.MapSubresource(_stagingTexture, 0,
+				_stagingTexture.Description.Width * _stagingTexture.Description.Height * 4,
+				MapMode.Read, SharpDX.Direct3D11.MapFlags.None);
+			PopulateBitmap(db, bitmapWrapper);
+			_deviceContext.UnmapSubresource(_stagingTexture, 0);
+			db.Data.Dispose();
 
 			bitmapWrapper.Invalidate();
 			return bitmapWrapper.InnerBitmap;
 		}
 
-		private void PopulateBitmap(DataRectangle dr, WriteableBitmapWrapper bitmapWrapper)
+		private void PopulateBitmap(DataBox db, WriteableBitmapWrapper bitmapWrapper)
 		{
-			dr.Data.Position = 0;
+			db.Data.Position = 0;
 			for (int y = 0; y < _height; y++)
 			{
-				dr.Data.Position = y * dr.Pitch;
+				db.Data.Position = y * db.RowPitch;
 				for (int x = 0; x < _width; x++)
 				{
-					var c = dr.Data.Read<ColorR8G8B8A8>();
+					var c = db.Data.Read<ColorR8G8B8A8>();
 					bitmapWrapper.SetPixel(x, y, System.Windows.Media.Color.FromArgb(
 						c.A, c.R, c.G, c.B));
 				}
@@ -241,7 +248,7 @@ namespace DotWarp
 
 		public void Dispose()
 		{
-			_device.InputAssembler.SetInputLayout(null);
+			_deviceContext.InputAssembler.SetInputLayout(null);
 			if (_meshes != null)
 				foreach (WarpMesh mesh in _meshes)
 					mesh.Dispose();

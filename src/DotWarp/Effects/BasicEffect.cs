@@ -1,21 +1,18 @@
-using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using DotWarp.Util;
 using Nexus;
 using SharpDX;
-using SharpDX.D3DCompiler;
-using SharpDX.Direct3D10;
+using SharpDX.Direct3D11;
+using Buffer = SharpDX.Direct3D11.Buffer;
 
 namespace DotWarp.Effects
 {
 	internal class BasicEffect : Effect
 	{
 		private readonly Dictionary<Texture2D, ShaderResourceView> _textureViews;
-
-		public EffectTechnique CurrentTechnique
-		{
-			get { return GetTechniqueByIndex(0); }
-		}
+		private readonly Buffer _vertexConstantBuffer, _pixelConstantBuffer;
+		private readonly SamplerState _samplerState;
 
 		public Matrix3D World { get; set; }
 		public Matrix3D View { get; set; }
@@ -36,8 +33,8 @@ namespace DotWarp.Effects
 
 		public float Alpha { get; set; }
 
-		public BasicEffect(Device device, ShaderBytecode byteCode)
-			: base(device, byteCode)
+		public BasicEffect(Device device, string effectCode)
+			: base(device, effectCode)
 		{
 			DirectionalLight0 = new DirectionalLight();
 			DirectionalLight1 = new DirectionalLight();
@@ -52,6 +49,35 @@ namespace DotWarp.Effects
 			_textureViews = new Dictionary<Texture2D, ShaderResourceView>();
 
 			Alpha = 1;
+
+			_vertexConstantBuffer = new Buffer(device, new BufferDescription
+			{
+				Usage = ResourceUsage.Default,
+				BindFlags = BindFlags.ConstantBuffer,
+				SizeInBytes = Marshal.SizeOf(typeof(BasicEffectVertexConstants)),
+				CpuAccessFlags = CpuAccessFlags.None,
+				OptionFlags = ResourceOptionFlags.None,
+				StructureByteStride = 0
+			});
+			_pixelConstantBuffer = new Buffer(device, new BufferDescription
+			{
+				Usage = ResourceUsage.Default,
+				BindFlags = BindFlags.ConstantBuffer,
+				SizeInBytes = Marshal.SizeOf(typeof(BasicEffectPixelConstants)),
+				CpuAccessFlags = CpuAccessFlags.None,
+				OptionFlags = ResourceOptionFlags.None,
+				StructureByteStride = 0
+			});
+
+			_samplerState = new SamplerState(device, new SamplerStateDescription
+			{
+				AddressU = TextureAddressMode.Wrap,
+				AddressV = TextureAddressMode.Wrap,
+				AddressW = TextureAddressMode.Wrap,
+				Filter = Filter.Anisotropic,
+				MaximumLod = float.MaxValue,
+				MinimumLod = 0
+			});
 		}
 
 		public void EnableDefaultLighting()
@@ -69,45 +95,46 @@ namespace DotWarp.Effects
 			DirectionalLight2.Color = new ColorRgbF(0.3231373f, 0.3607844f, 0.3937255f);
 		}
 
-		public static BasicEffect Create(Device device)
+		public override void CommitChanges()
 		{
-			ShaderBytecode byteCode = GetByteCode();
-			BasicEffect effect = new BasicEffect(device, byteCode);
-			byteCode.Dispose();
-			return effect;
-		}
+			BasicEffectVertexConstants vertexConstants = new BasicEffectVertexConstants();
 
-		public void Begin()
-		{
-			CommitChanges();
-		}
+			Matrix wvp = ConversionUtility.ToSharpDXMatrix(World * View * Projection);
+			vertexConstants.WorldViewProjection = Matrix.Transpose(wvp);
+			vertexConstants.World = Matrix.Transpose(ConversionUtility.ToSharpDXMatrix(World));
 
-		public void CommitChanges()
-		{
-			Matrix wvp = ConversionUtility.ToSharpDXMatrix(World*View*Projection);
-			GetVariableByName("WorldViewProjection").AsMatrix().SetMatrix(wvp);
-			GetVariableByName("World").AsMatrix().SetMatrix(ConversionUtility.ToSharpDXMatrix(World));
+			DataStream vertexDataStream = new DataStream(Marshal.SizeOf(typeof(BasicEffectVertexConstants)), true, true);
+			Marshal.StructureToPtr(vertexConstants, vertexDataStream.DataPointer, false);
+			vertexDataStream.Position = 0;
+			DataBox vertexDataBox = new DataBox(0, 0, vertexDataStream);
+			DeviceContext.UpdateSubresource(vertexDataBox, _vertexConstantBuffer, 0);
+			vertexDataStream.Dispose();
 
-			GetVariableByName("CameraPosition").AsVector().Set(ConversionUtility.ToSharpDXVector3(View.Translation));
+			BasicEffectPixelConstants pixelConstants = new BasicEffectPixelConstants();
 
-			GetVariableByName("LightingEnabled").AsScalar().Set(LightingEnabled);
+			pixelConstants.CameraPosition = ConversionUtility.ToSharpDXVector3(View.Translation);
 
-			GetVariableByName("Light0Enabled").AsScalar().Set(DirectionalLight0.Enabled);
-			GetVariableByName("Light0Direction").AsVector().Set(ConversionUtility.ToSharpDXVector3(DirectionalLight0.Direction));
-			GetVariableByName("Light0Color").AsVector().Set(ConversionUtility.ToSharpDXVector3(DirectionalLight0.Color));
+			pixelConstants.LightingEnabled = LightingEnabled;
 
-			GetVariableByName("Light1Enabled").AsScalar().Set(DirectionalLight1.Enabled);
-			GetVariableByName("Light1Direction").AsVector().Set(ConversionUtility.ToSharpDXVector3(DirectionalLight1.Direction));
-			GetVariableByName("Light1Color").AsVector().Set(ConversionUtility.ToSharpDXVector3(DirectionalLight1.Color));
+			pixelConstants.AmbientLightColor = new Vector3(0.3f, 0.3f, 0.3f);
 
-			GetVariableByName("Light2Enabled").AsScalar().Set(DirectionalLight2.Enabled);
-			GetVariableByName("Light2Direction").AsVector().Set(ConversionUtility.ToSharpDXVector3(DirectionalLight2.Direction));
-			GetVariableByName("Light2Color").AsVector().Set(ConversionUtility.ToSharpDXVector3(DirectionalLight2.Color));
+			pixelConstants.Light0Enabled = DirectionalLight0.Enabled;
+			pixelConstants.Light0Direction = ConversionUtility.ToSharpDXVector3(DirectionalLight0.Direction);
+			pixelConstants.Light0Color = ConversionUtility.ToSharpDXVector3(DirectionalLight0.Color);
 
-			GetVariableByName("DiffuseColor").AsVector().Set(ConversionUtility.ToSharpDXVector3(DiffuseColor));
-			GetVariableByName("SpecularColor").AsVector().Set(ConversionUtility.ToSharpDXVector3(SpecularColor));
-			GetVariableByName("SpecularPower").AsScalar().Set(SpecularPower);
+			pixelConstants.Light1Enabled = DirectionalLight1.Enabled;
+			pixelConstants.Light1Direction = ConversionUtility.ToSharpDXVector3(DirectionalLight1.Direction);
+			pixelConstants.Light1Color = ConversionUtility.ToSharpDXVector3(DirectionalLight1.Color);
 
+			pixelConstants.Light2Enabled = DirectionalLight2.Enabled;
+			pixelConstants.Light2Direction = ConversionUtility.ToSharpDXVector3(DirectionalLight2.Direction);
+			pixelConstants.Light2Color = ConversionUtility.ToSharpDXVector3(DirectionalLight2.Color);
+
+			pixelConstants.DiffuseColor = ConversionUtility.ToSharpDXVector3(DiffuseColor);
+			pixelConstants.SpecularColor = ConversionUtility.ToSharpDXVector3(SpecularColor);
+			pixelConstants.SpecularPower = SpecularPower;
+
+			DeviceContext.PixelShader.SetSampler(0, _samplerState);
 			if (Texture != null)
 			{
 				ShaderResourceView view;
@@ -116,33 +143,94 @@ namespace DotWarp.Effects
 					view = new ShaderResourceView(Device, Texture);
 					_textureViews.Add(Texture, view);
 				}
-				GetVariableByName("Texture").AsShaderResource().SetResource(view);
+				DeviceContext.PixelShader.SetShaderResource(0, view);
 			}
 			else
 			{
-				GetVariableByName("Texture").AsShaderResource().SetResource(null);
+				DeviceContext.PixelShader.SetShaderResource(0, null);
 			}
-			GetVariableByName("TextureEnabled").AsScalar().Set(TextureEnabled);
+			pixelConstants.TextureEnabled = TextureEnabled;
 
-			GetVariableByName("Alpha").AsScalar().Set(Alpha);
-		}
+			pixelConstants.Alpha = Alpha;
 
-		private static ShaderBytecode GetByteCode()
-		{
-			string errors;
-			ShaderBytecode bytes = ShaderBytecode.Compile(BasicEffectCode.GetCode(),
-				"fx_4_0", ShaderFlags.WarningsAreErrors, EffectFlags.None,
-				null, null, out errors);
-			if (!string.IsNullOrEmpty(errors))
-				throw new InvalidOperationException("Could not compile effect because of the following error(s): " + errors);
-			return bytes;
+			DataStream dataStream = new DataStream(Marshal.SizeOf(typeof(BasicEffectPixelConstants)), true, true);
+			Marshal.StructureToPtr(pixelConstants, dataStream.DataPointer, false);
+			dataStream.Position = 0;
+			DataBox dataBox = new DataBox(0, 0, dataStream);
+			DeviceContext.UpdateSubresource(dataBox, _pixelConstantBuffer, 0);
+			dataStream.Dispose();
+
+			DeviceContext.VertexShader.SetConstantBuffer(0, _vertexConstantBuffer);
+			DeviceContext.PixelShader.SetConstantBuffer(0, _pixelConstantBuffer);
 		}
 
 		public override void Dispose()
 		{
 			foreach (ShaderResourceView view in _textureViews.Values)
 				view.Dispose();
+			if (_vertexConstantBuffer != null)
+				_vertexConstantBuffer.Dispose();
+			if (_pixelConstantBuffer != null)
+				_pixelConstantBuffer.Dispose();
+			if (_samplerState != null)
+				_samplerState.Dispose();
 			base.Dispose();
+		}
+
+		[StructLayout(LayoutKind.Explicit, Size = 128)]
+		private struct BasicEffectVertexConstants
+		{
+			[FieldOffset(0)]
+			public Matrix WorldViewProjection;
+			[FieldOffset(64)]
+			public Matrix World;
+		}
+
+		[StructLayout(LayoutKind.Explicit, Size = 176)]
+		private struct BasicEffectPixelConstants
+		{
+			[FieldOffset(0)]
+			public Vector3 CameraPosition;
+
+			[FieldOffset(12)]
+			public bool LightingEnabled;
+
+			[FieldOffset(16)]
+			public Vector3 AmbientLightColor;
+
+			[FieldOffset(28)]
+			public bool Light0Enabled;
+			[FieldOffset(32)]
+			public Vector3 Light0Direction;
+			[FieldOffset(48)]
+			public Vector3 Light0Color;
+
+			[FieldOffset(60)]
+			public bool Light1Enabled;
+			[FieldOffset(64)]
+			public Vector3 Light1Direction;
+			[FieldOffset(80)]
+			public Vector3 Light1Color;
+
+			[FieldOffset(92)]
+			public bool Light2Enabled;
+			[FieldOffset(96)]
+			public Vector3 Light2Direction;
+			[FieldOffset(112)]
+			public Vector3 Light2Color;
+
+			[FieldOffset(128)]
+			public Vector3 DiffuseColor;
+			[FieldOffset(144)]
+			public Vector3 SpecularColor;
+			[FieldOffset(156)]
+			public float SpecularPower;
+
+			[FieldOffset(160)]
+			public bool TextureEnabled;
+
+			[FieldOffset(164)]
+			public float Alpha;
 		}
 	}
 }

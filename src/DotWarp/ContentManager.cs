@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using SharpDX.Direct3D10;
+using SharpDX.Direct3D11;
 using SharpDX.DXGI;
-using Device = SharpDX.Direct3D10.Device;
-using Resource = SharpDX.Direct3D10.Resource;
+using Device = SharpDX.Direct3D11.Device;
+using Resource = SharpDX.Direct3D11.Resource;
 
 namespace DotWarp
 {

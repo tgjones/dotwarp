@@ -1,33 +1,40 @@
-matrix WorldViewProjection;
-matrix World;
+cbuffer BasicEffectVertexConstants : register(b0)
+{
+	matrix WorldViewProjection;
+	matrix World;
+}
 
-float3 CameraPosition = float3(0, 5, 20);
+cbuffer BasicEffectPixelConstants : register(b0)
+{
+	float3 CameraPosition = float3(0, 5, 20);
 
-bool LightingEnabled = true;
+	bool LightingEnabled = true;
 
-float3 AmbientLightColor = float3(0.3, 0.3, 0.3);
+	float3 AmbientLightColor = float3(0.3, 0.3, 0.3);
 
-bool Light0Enabled = true;
-float3 Light0Direction = normalize(float3(0, -1, 0));
-float3 Light0Color = float3(1, 1, 1);
+	bool Light0Enabled = true;
+	float3 Light0Direction = normalize(float3(0, -1, 0));
+	float3 Light0Color = float3(1, 1, 1);
 
-bool Light1Enabled = true;
-float3 Light1Direction = normalize(float3(0, -1, -1));
-float3 Light1Color = float3(1, 1, 1);
+	bool Light1Enabled = true;
+	float3 Light1Direction = normalize(float3(0, -1, -1));
+	float3 Light1Color = float3(1, 1, 1);
 
-bool Light2Enabled = true;
-float3 Light2Direction = normalize(float3(1, -1, 0));
-float3 Light2Color = float3(1, 1, 1);
+	bool Light2Enabled = true;
+	float3 Light2Direction = normalize(float3(1, -1, 0));
+	float3 Light2Color = float3(1, 1, 1);
 
-float3 DiffuseColor = float3(0.1, 0.7, 0.1);
-float3 SpecularColor = float3(1, 1, 1);
-float SpecularPower = 16;
+	float3 DiffuseColor = float3(0.1, 0.7, 0.1);
+	float3 SpecularColor = float3(1, 1, 1);
+	float SpecularPower = 16;
 
-sampler Sampler;
-Texture2D<float4> Texture;
-bool TextureEnabled = false;
+	bool TextureEnabled = false;
 
-float Alpha = 1;
+	float Alpha = 1;
+}
+
+sampler Sampler : register(s0);
+Texture2D<float4> Texture : register(t0);
 
 struct ColorPair
 {
@@ -74,7 +81,7 @@ VS_OUT VS(VS_IN input)
     return output;
 }
 
-float4 PS( VS_OUT input ) : SV_Target
+float4 PS(VS_OUT input) : SV_Target
 {
 	ColorPair result;
 

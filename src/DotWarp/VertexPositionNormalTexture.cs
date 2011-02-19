@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 using Nexus;
-using SharpDX.Direct3D10;
+using SharpDX.Direct3D11;
 using SharpDX.DXGI;
 
 namespace DotWarp
