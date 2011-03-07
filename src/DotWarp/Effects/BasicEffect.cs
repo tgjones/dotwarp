@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using DotWarp.Util;
 using Nexus;
@@ -11,7 +12,7 @@ namespace DotWarp.Effects
 	internal class BasicEffect : Effect
 	{
 		private readonly Dictionary<Texture2D, ShaderResourceView> _textureViews;
-		private readonly Buffer _vertexConstantBuffer, _pixelConstantBuffer;
+		private readonly Buffer _vertexConstantBuffer, _pixelConstantBuffer, _lightsConstantBuffer;
 		private readonly SamplerState _samplerState;
 
 		public Matrix3D World { get; set; }
@@ -20,9 +21,7 @@ namespace DotWarp.Effects
 
 		public bool LightingEnabled { get; set; }
 
-		public DirectionalLight DirectionalLight0 { get; private set; }
-		public DirectionalLight DirectionalLight1 { get; private set; }
-		public DirectionalLight DirectionalLight2 { get; private set; }
+		public List<Light> Lights { get; private set; }
 
 		public ColorRgbF DiffuseColor { get; set; }
 		public ColorRgbF SpecularColor { get; set; }
@@ -36,9 +35,7 @@ namespace DotWarp.Effects
 		public BasicEffect(Device device, string effectCode)
 			: base(device, effectCode)
 		{
-			DirectionalLight0 = new DirectionalLight();
-			DirectionalLight1 = new DirectionalLight();
-			DirectionalLight2 = new DirectionalLight();
+			Lights = new List<Light>();
 
 			EnableDefaultLighting();
 
@@ -50,24 +47,9 @@ namespace DotWarp.Effects
 
 			Alpha = 1;
 
-			_vertexConstantBuffer = new Buffer(device, new BufferDescription
-			{
-				Usage = ResourceUsage.Default,
-				BindFlags = BindFlags.ConstantBuffer,
-				SizeInBytes = Marshal.SizeOf(typeof(BasicEffectVertexConstants)),
-				CpuAccessFlags = CpuAccessFlags.None,
-				OptionFlags = ResourceOptionFlags.None,
-				StructureByteStride = 0
-			});
-			_pixelConstantBuffer = new Buffer(device, new BufferDescription
-			{
-				Usage = ResourceUsage.Default,
-				BindFlags = BindFlags.ConstantBuffer,
-				SizeInBytes = Marshal.SizeOf(typeof(BasicEffectPixelConstants)),
-				CpuAccessFlags = CpuAccessFlags.None,
-				OptionFlags = ResourceOptionFlags.None,
-				StructureByteStride = 0
-			});
+			_vertexConstantBuffer = CreateConstantBuffer<BasicEffectVertexConstants>(device);
+			_pixelConstantBuffer = CreateConstantBuffer<BasicEffectPixelConstants>(device);
+			_lightsConstantBuffer = CreateConstantBuffer<BasicEffectLightConstants>(device);
 
 			_samplerState = new SamplerState(device, new SamplerStateDescription
 			{
@@ -79,60 +61,64 @@ namespace DotWarp.Effects
 				MinimumLod = 0
 			});
 		}
+		
+		private static Buffer CreateConstantBuffer<T>(Device device)
+		{
+			return new Buffer(device, new BufferDescription
+			{
+				Usage = ResourceUsage.Default,
+				BindFlags = BindFlags.ConstantBuffer,
+				SizeInBytes = Marshal.SizeOf(typeof(T)),
+				CpuAccessFlags = CpuAccessFlags.None,
+				OptionFlags = ResourceOptionFlags.None,
+				StructureByteStride = 0
+			});
+		}
 
 		public void EnableDefaultLighting()
 		{
 			LightingEnabled = true;
 
-			DirectionalLight0.Enabled = true;
-			DirectionalLight0.Direction = new Vector3D(0.5265408f, 0.5735765f, 0.6275069f);
-			DirectionalLight0.Color = new ColorRgbF(1f, 0.9607844f, 0.8078432f);
-			DirectionalLight1.Enabled = true;
-			DirectionalLight1.Direction = new Vector3D(-0.7198464f, -0.3420201f, -0.6040227f);
-			DirectionalLight1.Color = new ColorRgbF(0.9647059f, 0.7607844f, 0.4078432f);
-			DirectionalLight2.Enabled = true;
-			DirectionalLight2.Direction = new Vector3D(-0.4545195f, 0.7660444f, -0.4545195f);
-			DirectionalLight2.Color = new ColorRgbF(0.3231373f, 0.3607844f, 0.3937255f);
+			Lights.Clear();
+			Lights.Add(new DirectionalLight
+			{
+				Direction = new Vector3D(0.5265408f, 0.5735765f, 0.6275069f),
+				Color = new ColorRgbF(1f, 0.9607844f, 0.8078432f)
+			});
+			Lights.Add(new DirectionalLight
+			{
+				Direction = new Vector3D(-0.7198464f, -0.3420201f, -0.6040227f),
+				Color = new ColorRgbF(0.9647059f, 0.7607844f, 0.4078432f)
+			});
+			Lights.Add(new DirectionalLight
+			{
+				Direction = new Vector3D(-0.4545195f, 0.7660444f, -0.4545195f),
+				Color = new ColorRgbF(0.3231373f, 0.3607844f, 0.3937255f)
+			});
 		}
 
 		public override void CommitChanges()
 		{
-			BasicEffectVertexConstants vertexConstants = new BasicEffectVertexConstants();
+			// Vertex constants.
+			var vertexConstants = new BasicEffectVertexConstants();
 
 			Matrix wvp = ConversionUtility.ToSharpDXMatrix(World * View * Projection);
 			vertexConstants.WorldViewProjection = Matrix.Transpose(wvp);
 			vertexConstants.World = Matrix.Transpose(ConversionUtility.ToSharpDXMatrix(World));
 
-			DataStream vertexDataStream = new DataStream(Marshal.SizeOf(typeof(BasicEffectVertexConstants)), true, true);
-			Marshal.StructureToPtr(vertexConstants, vertexDataStream.DataPointer, false);
-			vertexDataStream.Position = 0;
-			DataBox vertexDataBox = new DataBox(0, 0, vertexDataStream);
-			DeviceContext.UpdateSubresource(vertexDataBox, _vertexConstantBuffer, 0);
-			vertexDataStream.Dispose();
+			UpdateDeviceResource(vertexConstants, _vertexConstantBuffer);
 
-			BasicEffectPixelConstants pixelConstants = new BasicEffectPixelConstants();
+			// Pixel constants.
 
-			pixelConstants.CameraPosition = ConversionUtility.ToSharpDXVector3(View.Translation);
-
-			pixelConstants.LightingEnabled = LightingEnabled;
-
-			pixelConstants.AmbientLightColor = new Vector3(0.3f, 0.3f, 0.3f);
-
-			pixelConstants.Light0Enabled = DirectionalLight0.Enabled;
-			pixelConstants.Light0Direction = ConversionUtility.ToSharpDXVector3(DirectionalLight0.Direction);
-			pixelConstants.Light0Color = ConversionUtility.ToSharpDXVector3(DirectionalLight0.Color);
-
-			pixelConstants.Light1Enabled = DirectionalLight1.Enabled;
-			pixelConstants.Light1Direction = ConversionUtility.ToSharpDXVector3(DirectionalLight1.Direction);
-			pixelConstants.Light1Color = ConversionUtility.ToSharpDXVector3(DirectionalLight1.Color);
-
-			pixelConstants.Light2Enabled = DirectionalLight2.Enabled;
-			pixelConstants.Light2Direction = ConversionUtility.ToSharpDXVector3(DirectionalLight2.Direction);
-			pixelConstants.Light2Color = ConversionUtility.ToSharpDXVector3(DirectionalLight2.Color);
-
-			pixelConstants.DiffuseColor = ConversionUtility.ToSharpDXVector3(DiffuseColor);
-			pixelConstants.SpecularColor = ConversionUtility.ToSharpDXVector3(SpecularColor);
-			pixelConstants.SpecularPower = SpecularPower;
+			var pixelConstants = new BasicEffectPixelConstants
+			{
+				CameraPosition = ConversionUtility.ToSharpDXVector3(View.Translation),
+				LightingEnabled = LightingEnabled,
+				AmbientLightColor = new Vector3(0.3f, 0.3f, 0.3f),
+				DiffuseColor = ConversionUtility.ToSharpDXVector3(DiffuseColor),
+				SpecularColor = ConversionUtility.ToSharpDXVector3(SpecularColor),
+				SpecularPower = SpecularPower
+			};
 
 			DeviceContext.PixelShader.SetSampler(0, _samplerState);
 			if (Texture != null)
@@ -153,15 +139,41 @@ namespace DotWarp.Effects
 
 			pixelConstants.Alpha = Alpha;
 
-			DataStream dataStream = new DataStream(Marshal.SizeOf(typeof(BasicEffectPixelConstants)), true, true);
-			Marshal.StructureToPtr(pixelConstants, dataStream.DataPointer, false);
-			dataStream.Position = 0;
-			DataBox dataBox = new DataBox(0, 0, dataStream);
-			DeviceContext.UpdateSubresource(dataBox, _pixelConstantBuffer, 0);
-			dataStream.Dispose();
+			UpdateDeviceResource(pixelConstants, _pixelConstantBuffer);
+
+			// Light constants.
+
+			var lightConstants = new BasicEffectLightConstants
+			{
+				DirectionalLights = new BasicEffectDirectionalLight[MaxLights]
+			};
+
+			var directionalLights = Lights.OfType<DirectionalLight>().ToList();
+			lightConstants.ActiveDirectionalLights = directionalLights.Count;
+			for (int i = 0; i < directionalLights.Count; ++i)
+			{
+				lightConstants.DirectionalLights[i].Enabled = directionalLights[i].Enabled;
+				lightConstants.DirectionalLights[i].Color = ConversionUtility.ToSharpDXVector3(directionalLights[i].Color);
+				lightConstants.DirectionalLights[i].Direction = ConversionUtility.ToSharpDXVector3(directionalLights[i].Direction);
+			}
+
+			UpdateDeviceResource(lightConstants, _lightsConstantBuffer);
+
+			// Bind to shader buffers.
 
 			DeviceContext.VertexShader.SetConstantBuffer(0, _vertexConstantBuffer);
 			DeviceContext.PixelShader.SetConstantBuffer(0, _pixelConstantBuffer);
+			DeviceContext.PixelShader.SetConstantBuffer(1, _lightsConstantBuffer);
+		}
+
+		private void UpdateDeviceResource<T>(T constants, Buffer constantBuffer)
+		{
+			var dataStream = new DataStream(Marshal.SizeOf(typeof(T)), true, true);
+			Marshal.StructureToPtr(constants, dataStream.DataPointer, false);
+			dataStream.Position = 0;
+			var dataBox = new DataBox(0, 0, dataStream);
+			DeviceContext.UpdateSubresource(dataBox, constantBuffer, 0);
+			dataStream.Dispose();
 		}
 
 		public override void Dispose()
@@ -172,13 +184,19 @@ namespace DotWarp.Effects
 				_vertexConstantBuffer.Dispose();
 			if (_pixelConstantBuffer != null)
 				_pixelConstantBuffer.Dispose();
+			if (_lightsConstantBuffer != null)
+				_lightsConstantBuffer.Dispose();
 			if (_samplerState != null)
 				_samplerState.Dispose();
 			base.Dispose();
 		}
 
+		// The following structs are more complex than I'd like, because of the need to
+		// follow the packing rules from here:
+		// http://msdn.microsoft.com/en-us/library/bb509632(VS.85).aspx
+
 		[StructLayout(LayoutKind.Explicit, Size = 128)]
-		private struct BasicEffectVertexConstants
+		internal struct BasicEffectVertexConstants
 		{
 			[FieldOffset(0)]
 			public Matrix WorldViewProjection;
@@ -186,8 +204,8 @@ namespace DotWarp.Effects
 			public Matrix World;
 		}
 
-		[StructLayout(LayoutKind.Explicit, Size = 176)]
-		private struct BasicEffectPixelConstants
+		[StructLayout(LayoutKind.Explicit, Size = 80)]
+		internal struct BasicEffectPixelConstants
 		{
 			[FieldOffset(0)]
 			public Vector3 CameraPosition;
@@ -198,39 +216,45 @@ namespace DotWarp.Effects
 			[FieldOffset(16)]
 			public Vector3 AmbientLightColor;
 
-			[FieldOffset(28)]
-			public bool Light0Enabled;
 			[FieldOffset(32)]
-			public Vector3 Light0Direction;
+			public Vector3 DiffuseColor;
+
 			[FieldOffset(48)]
-			public Vector3 Light0Color;
+			public Vector3 SpecularColor;
 
 			[FieldOffset(60)]
-			public bool Light1Enabled;
-			[FieldOffset(64)]
-			public Vector3 Light1Direction;
-			[FieldOffset(80)]
-			public Vector3 Light1Color;
-
-			[FieldOffset(92)]
-			public bool Light2Enabled;
-			[FieldOffset(96)]
-			public Vector3 Light2Direction;
-			[FieldOffset(112)]
-			public Vector3 Light2Color;
-
-			[FieldOffset(128)]
-			public Vector3 DiffuseColor;
-			[FieldOffset(144)]
-			public Vector3 SpecularColor;
-			[FieldOffset(156)]
 			public float SpecularPower;
 
-			[FieldOffset(160)]
+			[FieldOffset(64)]
 			public bool TextureEnabled;
 
-			[FieldOffset(164)]
+			[FieldOffset(68)]
 			public float Alpha;
+		}
+
+		[StructLayout(LayoutKind.Explicit, Size = 32)]
+		internal struct BasicEffectDirectionalLight
+		{
+			[FieldOffset(0)]
+			public bool Enabled;
+
+			[FieldOffset(4)]
+			public Vector3 Direction;
+
+			[FieldOffset(16)]
+			public Vector3 Color;
+		}
+
+		private const int MaxLights = 16;
+
+		[StructLayout(LayoutKind.Explicit, Size = 4 + (32 * MaxLights) + 12 /* padding */)]
+		internal struct BasicEffectLightConstants
+		{
+			[FieldOffset(0)]
+			public int ActiveDirectionalLights;
+
+			[FieldOffset(16), MarshalAs(UnmanagedType.ByValArray, SizeConst = MaxLights)]
+			public BasicEffectDirectionalLight[] DirectionalLights;
 		}
 	}
 }

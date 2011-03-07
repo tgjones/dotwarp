@@ -1,3 +1,5 @@
+#define MAX_LIGHTS 16
+
 cbuffer BasicEffectVertexConstants : register(b0)
 {
 	matrix WorldViewProjection;
@@ -12,18 +14,6 @@ cbuffer BasicEffectPixelConstants : register(b0)
 
 	float3 AmbientLightColor = float3(0.3, 0.3, 0.3);
 
-	bool Light0Enabled = true;
-	float3 Light0Direction = normalize(float3(0, -1, 0));
-	float3 Light0Color = float3(1, 1, 1);
-
-	bool Light1Enabled = true;
-	float3 Light1Direction = normalize(float3(0, -1, -1));
-	float3 Light1Color = float3(1, 1, 1);
-
-	bool Light2Enabled = true;
-	float3 Light2Direction = normalize(float3(1, -1, 0));
-	float3 Light2Color = float3(1, 1, 1);
-
 	float3 DiffuseColor = float3(0.1, 0.7, 0.1);
 	float3 SpecularColor = float3(1, 1, 1);
 	float SpecularPower = 16;
@@ -31,6 +21,19 @@ cbuffer BasicEffectPixelConstants : register(b0)
 	bool TextureEnabled = false;
 
 	float Alpha = 1;
+}
+
+struct DirectionalLight
+{
+	bool Enabled;
+	float3 Direction;
+	float3 Color;
+};
+
+cbuffer LightConstants : register(b1)
+{
+	int ActiveDirectionalLights;
+	DirectionalLight DirectionalLights[MAX_LIGHTS];
 }
 
 sampler Sampler : register(s0);
@@ -42,12 +45,12 @@ struct ColorPair
 	float3 Specular;
 };
 
-void CalculateDirectionalLight(float3 lightDirection, float3 lightColor, float3 position, float3 normal, inout ColorPair current)
+void CalculateDirectionalLight(DirectionalLight light, float3 position, float3 normal, inout ColorPair current)
 {
-	float3 directionToLight = -lightDirection;
+	float3 directionToLight = -light.Direction;
 
 	float3 diff = saturate(dot(normal, directionToLight)); // diffuse component
-	current.Diffuse += lightColor * diff;
+	current.Diffuse += light.Color * diff;
 
 	// R = 2 * (N.L) * N - L
 	float3 directionToCamera = normalize(CameraPosition - position);
@@ -89,18 +92,11 @@ float4 PS(VS_OUT input) : SV_Target
 	{
 		result.Diffuse = AmbientLightColor;
 		result.Specular = float3(0, 0, 0);
-
-		// Directional Light 0
-		if (Light0Enabled)
-			CalculateDirectionalLight(Light0Direction, Light0Color, input.WorldPosition, input.WorldNormal, result);
-
-		// Directional Light 1
-		if (Light1Enabled)
-			CalculateDirectionalLight(Light1Direction, Light1Color, input.WorldPosition, input.WorldNormal, result);
-
-		// Directional Light 2
-		if (Light2Enabled)
-			CalculateDirectionalLight(Light2Direction, Light2Color, input.WorldPosition, input.WorldNormal, result);
+		
+		// Directional lights.
+		for (int i = 0; i < ActiveDirectionalLights; ++i)
+			if (DirectionalLights[i].Enabled)
+				CalculateDirectionalLight(DirectionalLights[i], input.WorldPosition, input.WorldNormal, result);
 
 		result.Diffuse *= DiffuseColor;
 		if (TextureEnabled)

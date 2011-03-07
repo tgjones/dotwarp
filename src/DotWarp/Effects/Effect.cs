@@ -15,8 +15,8 @@ namespace DotWarp.Effects
 
 		public Effect(Device device, string effectCode)
 		{
-			_vertexShaderBytecode = ShaderBytecode.Compile(effectCode, "VS", "vs_4_0", ShaderFlags.None, EffectFlags.None);
-			_pixelShaderBytecode = ShaderBytecode.Compile(effectCode, "PS", "ps_4_0", ShaderFlags.None, EffectFlags.None);
+			_vertexShaderBytecode = EffectCompiler.CompileVertexShader(effectCode);
+			_pixelShaderBytecode = EffectCompiler.CompilePixelShader(effectCode);
 
 			Device = device;
 			DeviceContext = device.ImmediateContext;

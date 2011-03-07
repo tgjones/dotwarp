@@ -75,6 +75,11 @@
     <Compile Include="Effects\DirectionalLight.cs" />
     <Compile Include="Effects\Effect.cs" />
     <Compile Include="Effects\EffectPass.cs" />
+    <Compile Include="Effects\EffectCompiler.cs" />
+    <Compile Include="Effects\Light.cs" />
+    <Compile Include="Effects\PointLight.cs" />
+    <Compile Include="Effects\PointLightBase.cs" />
+    <Compile Include="Effects\SpotLight.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RenderOptions.cs" />
     <Compile Include="Util\ConversionUtility.cs" />

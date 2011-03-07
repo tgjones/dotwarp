@@ -1,5 +1,8 @@
+using System.IO;
+using System.Windows.Media.Imaging;
 using Meshellator;
 using Nexus;
+using Nexus.Graphics;
 using Nexus.Graphics.Cameras;
 using NUnit.Framework;
 
@@ -37,6 +40,32 @@ namespace DotWarp.Tests
 				//e.Frames.Add(BitmapFrame.Create(bitmap));
 				//using (Stream stream = File.OpenWrite("output.png"))
 				//    e.Save(stream);
+			}
+		}
+
+		[Test]
+		public void CanRenderPrimitive()
+		{
+			// Arrange.
+			Scene scene = MeshellatorLoader.ImportFromFile("Models/3ds/85-nissan-fairlady.3ds");
+			using (WarpSceneRenderer renderer = new WarpSceneRenderer(scene, 550, 350))
+			{
+				renderer.Initialize();
+
+				renderer.Options.BackgroundColor = Color.FromRgb(200, 200, 200);
+
+				Camera camera = new PerspectiveCamera
+				{
+					LookDirection = new Vector3D(-1, -0.3f, 1),
+					Position = new Point3D(2100, 1200, -700),
+				};
+
+				BitmapSource bitmap = renderer.Render(camera);
+
+				JpegBitmapEncoder e = new JpegBitmapEncoder();
+				e.Frames.Add(BitmapFrame.Create(bitmap));
+				using (Stream stream = File.OpenWrite("output.jpg"))
+					e.Save(stream);
 			}
 		}
 	}
