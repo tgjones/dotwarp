@@ -72,6 +72,7 @@
     <Compile Include="ContentManager.cs" />
     <Compile Include="Effects\BasicEffect.cs" />
     <Compile Include="Effects\BasicEffectCode.cs" />
+    <Compile Include="Effects\ConstantBuffer.cs" />
     <Compile Include="Effects\DirectionalLight.cs" />
     <Compile Include="Effects\Effect.cs" />
     <Compile Include="Effects\EffectPass.cs" />

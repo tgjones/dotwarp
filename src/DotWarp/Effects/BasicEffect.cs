@@ -5,14 +5,15 @@ using DotWarp.Util;
 using Nexus;
 using SharpDX;
 using SharpDX.Direct3D11;
-using Buffer = SharpDX.Direct3D11.Buffer;
 
 namespace DotWarp.Effects
 {
 	internal class BasicEffect : Effect
 	{
 		private readonly Dictionary<Texture2D, ShaderResourceView> _textureViews;
-		private readonly Buffer _vertexConstantBuffer, _pixelConstantBuffer, _lightsConstantBuffer;
+		private readonly ConstantBuffer<BasicEffectVertexConstants> _vertexConstantBuffer;
+		private readonly ConstantBuffer<BasicEffectPixelConstants> _pixelConstantBuffer;
+		private readonly ConstantBuffer<BasicEffectLightConstants> _lightsConstantBuffer;
 		private readonly SamplerState _samplerState;
 
 		public Matrix3D World { get; set; }
@@ -47,9 +48,9 @@ namespace DotWarp.Effects
 
 			Alpha = 1;
 
-			_vertexConstantBuffer = CreateConstantBuffer<BasicEffectVertexConstants>(device);
-			_pixelConstantBuffer = CreateConstantBuffer<BasicEffectPixelConstants>(device);
-			_lightsConstantBuffer = CreateConstantBuffer<BasicEffectLightConstants>(device);
+			_vertexConstantBuffer = new ConstantBuffer<BasicEffectVertexConstants>(device);
+			_pixelConstantBuffer = new ConstantBuffer<BasicEffectPixelConstants>(device);
+			_lightsConstantBuffer = new ConstantBuffer<BasicEffectLightConstants>(device);
 
 			_samplerState = new SamplerState(device, new SamplerStateDescription
 			{
@@ -59,19 +60,6 @@ namespace DotWarp.Effects
 				Filter = Filter.Anisotropic,
 				MaximumLod = float.MaxValue,
 				MinimumLod = 0
-			});
-		}
-		
-		private static Buffer CreateConstantBuffer<T>(Device device)
-		{
-			return new Buffer(device, new BufferDescription
-			{
-				Usage = ResourceUsage.Default,
-				BindFlags = BindFlags.ConstantBuffer,
-				SizeInBytes = Marshal.SizeOf(typeof(T)),
-				CpuAccessFlags = CpuAccessFlags.None,
-				OptionFlags = ResourceOptionFlags.None,
-				StructureByteStride = 0
 			});
 		}
 
@@ -106,7 +94,7 @@ namespace DotWarp.Effects
 			vertexConstants.WorldViewProjection = Matrix.Transpose(wvp);
 			vertexConstants.World = Matrix.Transpose(ConversionUtility.ToSharpDXMatrix(World));
 
-			UpdateDeviceResource(vertexConstants, _vertexConstantBuffer);
+			_vertexConstantBuffer.UpdateValue(vertexConstants);
 
 			// Pixel constants.
 
@@ -139,7 +127,7 @@ namespace DotWarp.Effects
 
 			pixelConstants.Alpha = Alpha;
 
-			UpdateDeviceResource(pixelConstants, _pixelConstantBuffer);
+			_pixelConstantBuffer.UpdateValue(pixelConstants);
 
 			// Light constants.
 
@@ -157,23 +145,13 @@ namespace DotWarp.Effects
 				lightConstants.DirectionalLights[i].Direction = ConversionUtility.ToSharpDXVector3(directionalLights[i].Direction);
 			}
 
-			UpdateDeviceResource(lightConstants, _lightsConstantBuffer);
+			_lightsConstantBuffer.UpdateValue(lightConstants);
 
 			// Bind to shader buffers.
 
-			DeviceContext.VertexShader.SetConstantBuffer(0, _vertexConstantBuffer);
-			DeviceContext.PixelShader.SetConstantBuffer(0, _pixelConstantBuffer);
-			DeviceContext.PixelShader.SetConstantBuffer(1, _lightsConstantBuffer);
-		}
-
-		private void UpdateDeviceResource<T>(T constants, Buffer constantBuffer)
-		{
-			var dataStream = new DataStream(Marshal.SizeOf(typeof(T)), true, true);
-			Marshal.StructureToPtr(constants, dataStream.DataPointer, false);
-			dataStream.Position = 0;
-			var dataBox = new DataBox(0, 0, dataStream);
-			DeviceContext.UpdateSubresource(dataBox, constantBuffer, 0);
-			dataStream.Dispose();
+			DeviceContext.VertexShader.SetConstantBuffer(0, _vertexConstantBuffer.Buffer);
+			DeviceContext.PixelShader.SetConstantBuffer(0, _pixelConstantBuffer.Buffer);
+			DeviceContext.PixelShader.SetConstantBuffer(1, _lightsConstantBuffer.Buffer);
 		}
 
 		public override void Dispose()
