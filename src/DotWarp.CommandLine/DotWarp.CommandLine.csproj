@@ -41,9 +41,6 @@
       <HintPath>..\packages\Nexus.1.0.0.0\lib\NET40\Nexus.dll</HintPath>
     </Reference>
     <Reference Include="PresentationCore" />
-    <Reference Include="SharpDX.Error">
-      <HintPath>..\..\lib\SharpDX\SharpDX.Error.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xaml" />

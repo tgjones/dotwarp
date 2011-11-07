@@ -45,8 +45,8 @@ namespace DotWarp.Effects
 			// dataStream.Write(value) for better performance.
 			Marshal.StructureToPtr(value, _dataStream.DataPointer, false);
 
-			var dataBox = new DataBox(0, 0, _dataStream);
-			_device.ImmediateContext.UpdateSubresource(dataBox, _buffer, 0);
+			var dataBox = new DataBox(_dataStream.DataPointer);
+			_device.ImmediateContext.UpdateSubresource(dataBox, _buffer);
 		}
 
 		public void Dispose()

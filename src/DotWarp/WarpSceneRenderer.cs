@@ -132,14 +132,14 @@ namespace DotWarp
 
 			_effect = new BasicEffect(_device, BasicEffectCode.GetCode());
 
-			_deviceContext.InputAssembler.SetPrimitiveTopology(PrimitiveTopology.TriangleList);
+			_deviceContext.InputAssembler.PrimitiveTopology = PrimitiveTopology.TriangleList;
 
 			ShaderBytecode passSignature = _effect.Pass.Signature;
 			_inputLayout = new InputLayout(_device,
 				passSignature,
 				VertexPositionNormalTexture.InputElements);
 			passSignature.Dispose();
-			_deviceContext.InputAssembler.SetInputLayout(_inputLayout);
+			_deviceContext.InputAssembler.InputLayout = _inputLayout;
 
 			Texture2DDescription resolveTextureDescription = _renderTextureDescription;
 			resolveTextureDescription.SampleDescription = new SampleDescription(1, 0);
@@ -212,7 +212,6 @@ namespace DotWarp
 
 			WriteableBitmapWrapper bitmapWrapper = new WriteableBitmapWrapper(_width, _height);
 			DataBox db = _deviceContext.MapSubresource(_stagingTexture, 0,
-				_stagingTexture.Description.Width * _stagingTexture.Description.Height * 4,
 				MapMode.Read, SharpDX.Direct3D11.MapFlags.None);
 			PopulateBitmap(db, bitmapWrapper);
 			_deviceContext.UnmapSubresource(_stagingTexture, 0);
@@ -248,7 +247,7 @@ namespace DotWarp
 
 		public void Dispose()
 		{
-			_deviceContext.InputAssembler.SetInputLayout(null);
+			_deviceContext.InputAssembler.InputLayout = null;
 			if (_meshes != null)
 				foreach (WarpMesh mesh in _meshes)
 					mesh.Dispose();
