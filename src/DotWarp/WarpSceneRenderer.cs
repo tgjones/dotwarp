@@ -75,7 +75,15 @@ namespace DotWarp
 			var viewport = new Viewport(0, 0, _width, _height);
 			_deviceContext.Rasterizer.SetViewports(viewport);
 
-			SampleDescription sampleDescription = new SampleDescription(8, 0);
+			int supportedSampleCount = 1;
+			foreach (int sampleCount in new[] { 8, 4, 2, 1 })
+				if (_device.CheckMultisampleQualityLevels(Format.R8G8B8A8_UNorm, sampleCount) != 0)
+				{
+					supportedSampleCount = sampleCount;
+					break;
+				}
+
+			SampleDescription sampleDescription = new SampleDescription(supportedSampleCount, 0);
 			Texture2DDescription depthStencilDescription = new Texture2DDescription
 			{
 				Format = Format.D24_UNorm_S8_UInt,
