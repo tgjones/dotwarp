@@ -219,25 +219,26 @@ namespace DotWarp
 			_deviceContext.CopyResource(_resolveTexture, _stagingTexture);
 
 			WriteableBitmapWrapper bitmapWrapper = new WriteableBitmapWrapper(_width, _height);
+			DataStream ds;
 			DataBox db = _deviceContext.MapSubresource(_stagingTexture, 0,
-				MapMode.Read, SharpDX.Direct3D11.MapFlags.None);
-			PopulateBitmap(db, bitmapWrapper);
+				MapMode.Read, SharpDX.Direct3D11.MapFlags.None, out ds);
+			PopulateBitmap(db, ds, bitmapWrapper);
 			_deviceContext.UnmapSubresource(_stagingTexture, 0);
-			db.Data.Dispose();
+			ds.Dispose();
 
 			bitmapWrapper.Invalidate();
 			return bitmapWrapper.InnerBitmap;
 		}
 
-		private void PopulateBitmap(DataBox db, WriteableBitmapWrapper bitmapWrapper)
+		private void PopulateBitmap(DataBox db, DataStream ds, WriteableBitmapWrapper bitmapWrapper)
 		{
-			db.Data.Position = 0;
+			ds.Position = 0;
 			for (int y = 0; y < _height; y++)
 			{
-				db.Data.Position = y * db.RowPitch;
+				ds.Position = y * db.RowPitch;
 				for (int x = 0; x < _width; x++)
 				{
-					var c = db.Data.Read<ColorR8G8B8A8>();
+					var c = ds.Read<ColorR8G8B8A8>();
 					bitmapWrapper.SetPixel(x, y, System.Windows.Media.Color.FromArgb(
 						c.A, c.R, c.G, c.B));
 				}
