@@ -38,9 +38,9 @@ namespace DotWarp.Util
 			return new Vector3(c.R, c.G, c.B);
 		}
 
-		public static System.Drawing.Color ToDrawingColor(Color c)
+		public static Color4 ToSharpDXColor(Nexus.Color c)
 		{
-			return System.Drawing.Color.FromArgb(c.A, c.R, c.G, c.B);
+			return new Color4(c.R / 255.0f, c.G / 255.0f, c.B / 255.0f, c.A / 255.0f);
 		}
 	}
 }

@@ -192,7 +192,7 @@ namespace DotWarp
 				IsFrontCounterClockwise = Options.TriangleWindingOrderReversed
 			});
 			_deviceContext.Rasterizer.State = rasterizerState;
-			_deviceContext.ClearRenderTargetView(_renderTargetView, ConversionUtility.ToDrawingColor(Options.BackgroundColor));
+			_deviceContext.ClearRenderTargetView(_renderTargetView, ConversionUtility.ToSharpDXColor(Options.BackgroundColor));
 			_deviceContext.ClearDepthStencilView(_depthStencilView, DepthStencilClearFlags.Depth, 1, 0);
 			_deviceContext.OutputMerger.SetTargets(_depthStencilView, _renderTargetView);
 
