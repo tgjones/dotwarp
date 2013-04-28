@@ -51,3 +51,7 @@ Materials are loaded from the mesh files, and default lighting is used.
 		using (Stream stream = File.OpenWrite("output.png"))
 			e.Save(stream);
 	}
+
+This renders the following image:
+
+![rendered image](https://github.com/tgjones/dotwarp/raw/master/doc/nissan.jpg)
