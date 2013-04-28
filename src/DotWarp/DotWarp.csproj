@@ -94,6 +94,7 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Effects\BasicEffect.fx" />
+    <None Include="DotWarp.nuspec" />
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
