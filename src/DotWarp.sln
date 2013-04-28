@@ -1,6 +1,6 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotWarp", "DotWarp\DotWarp.csproj", "{666C7F74-F489-4AD7-BC16-77C71EA5E4B0}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotWarp.Tests", "DotWarp.Tests\DotWarp.Tests.csproj", "{2D2AFB99-DC22-4DAA-998E-AB97727070A1}"
