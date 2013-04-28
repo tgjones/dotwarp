@@ -83,6 +83,10 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="..\..\lib\D3DCompiler_43.dll">
+      <Link>D3DCompiler_43.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Models\3ds\85-nissan-fairlady.3DS">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
