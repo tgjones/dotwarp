@@ -28,6 +28,11 @@ namespace DotWarp.Util
 			};
 		}
 
+		public static Vector3 ToSharpDXVector3(Point3D v)
+		{
+			return new Vector3(v.X, v.Y, v.Z);
+		}
+
 		public static Vector3 ToSharpDXVector3(Vector3D v)
 		{
 			return new Vector3(v.X, v.Y, v.Z);
