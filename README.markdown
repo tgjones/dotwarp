@@ -2,23 +2,22 @@
 
 ### What is this?
 
-DotWarp is an easy-to-use 3D software rasterization library, which produces 2D rendered images from 3D mesh files. It uses WARP, a 3D software rasterizer built-in to Windows Vista / 7 / Server 2008 R2, for the actual rasterization. It is a .NET 4.0 project.
+DotWarp is an easy-to-use 3D software rasterization library, which produces 2D rendered images from 3D mesh files. It uses WARP, a 3D software rasterizer built-in to Windows Vista / 7 / 8 / Server 2008 R2 / Server 2012, for the actual rasterization. It is a .NET 4.0 project.
 
-For more information about WARP, see <http://msdn.microsoft.com/en-us/library/dd285359.aspx>.
+For more information about WARP, see <http://msdn.microsoft.com/en-us/library/gg615082.aspx>.
 
 ### System requirements
 
 DotWarp has some fairly specific requirements / prerequisites:
 
 1. .NET 4.0
-2. Windows Vista / 7 / Server 2008 R2 (WARP is only supported on these platforms)
+2. Windows Vista / 7 / 8 / Server 2008 R2 / Server 2012 (WARP is only supported on these platforms)
 3. Latest [DirectX End-User Runtime](http://www.microsoft.com/downloads/en/details.aspx?FamilyID=2DA43D38-DB71-4C1B-BC6A-9B6652CD92A3)
 
 ### Quick start
 
-1. Download the latest release from the [downloads page](http://github.com/roastedamoeba/dotwarp/downloads).
-   The zip file contains the necessary DLLs.
-2. Read the [wiki](http://github.com/roastedamoeba/dotwarp/wiki) for information on using DotWarp to render 3D scenes.
+1. Install [DotWarp](https://nuget.org/packages/DotWarp/) using NuGet.
+2. Read the [wiki](http://github.com/tgjones/dotwarp/wiki) for information on using DotWarp to render 3D scenes.
 
 ### Why should I use DotWarp?
 
@@ -26,7 +25,7 @@ DotWarp has some fairly specific requirements / prerequisites:
 
 ### How to use DotWarp
 
-DotWarp uses Meshellator to import meshes from 3D files (currently, Meshellator only supports .obj and .3ds files).
+DotWarp relies on [Meshellator](http://github.com/tgjones/meshellator) to import meshes from 3D files (currently, Meshellator only supports .obj and .3ds files).
 Materials are loaded from the mesh files, and default lighting is used.
 
 	Scene scene = MeshellatorLoader.ImportFromFile("Models/3ds/85-nissan-fairlady.3ds");
